@@ -1,0 +1,185 @@
+
+pipeline {
+    agent { label 'DevopsAgentLabelV5' }
+
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+    }
+
+    environment {
+        IMAGE_REPO = 'shaikhdocker/streamlit-app'
+        GITOPS_REPO = 'https://github.com/shaikh4git/Streamlit-GitOps.git'
+        GITOPS_BRANCH = 'main'
+    }
+
+
+    stages {
+        stage('Clean Workspaces') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('Checkout from Github Repositories') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
+
+                script {
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
+                    env.FULL_IMAGE = "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
+                }
+
+                echo "Building ${env.FULL_IMAGE}"
+            }
+        }
+
+
+        stage('Docker Build & Push Netflix image freshly') {
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'docker_cred',
+                        variable: 'DOCKER_API_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set +x
+
+                        echo "$DOCKER_API_KEY" |
+                          docker login -u shaikhdocker --password-stdin
+
+                        docker buildx build \
+                          --tag "$FULL_IMAGE" \
+                          --load \
+                          .
+
+                        docker push "$FULL_IMAGE"
+                    '''
+                }
+            }
+        }
+        stage('Deploy to Docker - Staging') {
+            steps {
+                sh '''
+                    docker pull "$FULL_IMAGE"
+
+                    if docker ps -aq \
+                      --filter "name=^netflix$" | grep -q .; then
+                        docker rm -f netflix
+                    fi
+
+                    docker run -d \
+                      --name netflix \
+                      -p 8081:80 \
+                      "$FULL_IMAGE"
+                '''
+            }
+        }
+
+        stage('Update GitOps Repository') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'github-gitops-token',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+                        set +x
+
+                        AUTH_DIR="$(mktemp -d)"
+                        trap 'rm -rf "$AUTH_DIR"' EXIT
+
+                        cat > "$AUTH_DIR/askpass.sh" <<'EOF'
+#!/bin/sh
+case "$1" in
+  *Username*) printf '%s\\n' "$GIT_USERNAME" ;;
+  *Password*) printf '%s\\n' "$GIT_TOKEN" ;;
+  *) exit 1 ;;
+esac
+EOF
+                        chmod 700 "$AUTH_DIR/askpass.sh"
+                        export GIT_ASKPASS="$AUTH_DIR/askpass.sh"
+                        export GIT_TERMINAL_PROMPT=0
+
+                        git clone \
+                          --branch "$GITOPS_BRANCH" \
+                          "$GITOPS_REPO" gitops
+
+                        cd gitops
+
+                        test -f netflix/argocd/deployment.yaml
+
+                        python3 - <<'PY'
+import os
+import re
+from pathlib import Path
+
+path = Path("netflix/argocd/deployment.yaml")
+text = path.read_text()
+
+image = os.environ["FULL_IMAGE"]
+
+pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/netflix:[^\\s]+'
+
+text, count = re.subn(
+    pattern,
+    lambda match: match.group(1) + image,
+    text
+)
+
+if count != 1:
+    raise SystemExit(
+        f"Expected exactly one Netflix image, found {count}"
+    )
+
+path.write_text(text)
+PY
+
+                        git config user.name "Jenkins CI"
+                        git config user.email "jenkins@localhost"
+
+                        git add netflix/argocd/deployment.yaml
+                        git commit -m "Deploy Netflix $FULL_IMAGE"
+
+                        git push origin "HEAD:$GITOPS_BRANCH"
+                    '''
+                }
+            }
+        }
+
+        stage('GitOps Commit Published') {
+            steps {
+                echo """
+                Jenkins pushed the approved image tag to Git.
+
+                Image: ${env.FULL_IMAGE}
+                Repository: ${env.GITOPS_REPO}
+
+                Argo CD will reconcile the Netflix application!
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            emailext(
+                attachLog: true,
+                subject: "${currentBuild.currentResult}",
+                body: """
+                    Project: ${env.JOB_NAME}<br/>
+                    Build: ${env.BUILD_NUMBER}<br/>
+                    Image: ${env.FULL_IMAGE ?: 'Not built'}<br/>
+                    URL: ${env.BUILD_URL}<br/>
+                """,
+                to: 'shaikh4huda@gmail.com',
+                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+            )
+        }
+    }
+}
