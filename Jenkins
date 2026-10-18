@@ -124,7 +124,7 @@ text = path.read_text()
 
 image = os.environ["FULL_IMAGE"]
 
-pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/streamlit:[^\\s]+'
+pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/sshuda-streamlit-app:[^\\s]+'
 
 text, count = re.subn(
     pattern,
@@ -134,7 +134,7 @@ text, count = re.subn(
 
 if count != 1:
     raise SystemExit(
-        f"Expected exactly one Netflix image, found {count}"
+        f"Expected exactly one Streamlit image, found {count}"
     )
 
 path.write_text(text)
@@ -145,7 +145,7 @@ PY
 
                         git add argocd/strmlit-deployment.yaml
 
-                        git commit -m "Deploy Netflix $FULL_IMAGE"
+                        git commit -m "Deploy Streamlit $FULL_IMAGE"
 
                         git push origin "HEAD:$GITOPS_BRANCH"
                     '''
@@ -161,7 +161,7 @@ PY
                 Image: ${env.FULL_IMAGE}
                 Repository: ${env.GITOPS_REPO}
 
-                Argo CD will reconcile the Netflix application!
+                Argo CD will reconcile the Streamlit application!
                 """
             }
         }
