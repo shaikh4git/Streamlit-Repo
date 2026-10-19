@@ -104,63 +104,32 @@ pipeline {
                                 set -eu
                                 set +x
 
-                                AUTH_DIR="$(mktemp -d)"
-                                trap 'rm -rf "$AUTH_DIR"' EXIT
-
-                                cat > "$AUTH_DIR/askpass.sh" <<'EOF'
-                                    #!/bin/sh
-                                    case "$1" in
-                                    *Username*) printf '%s\\n' "$GIT_USERNAME" ;;
-                                    *Password*) printf '%s\\n' "$GIT_TOKEN" ;;
-                                    *) exit 1 ;;
-                                    esac
-                                    EOF
-                                chmod 700 "$AUTH_DIR/askpass.sh"
-                                export GIT_ASKPASS="$AUTH_DIR/askpass.sh"
                                 export GIT_TERMINAL_PROMPT=0
+                                HELPER='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_TOKEN"; }; f'
 
-                                git clone \
-                                --branch "$GITOPS_BRANCH" \
-                                "$GITOPS_REPO" gitops
-
+                                git -c credential.helper="$HELPER" clone \
+                                --branch "$GITOPS_BRANCH" "$GITOPS_REPO" gitops
                                 cd gitops
 
                                 test -f argocd/strmlit-deployment.yaml
 
-                                python3 - <<'PY'
-                                import os
-                                import re
-                                from pathlib import Path
+                                sed -i -E "s#(image:[[:space:]]*)shaikhdocker/sshuda-streamlit-app:[^[:space:]]+#\\1${FULL_IMAGE}#" \
+                                argocd/strmlit-deployment.yaml
 
-                                path = Path("argocd/strmlit-deployment.yaml")
-                                text = path.read_text()
-
-                                image = os.environ["FULL_IMAGE"]
-
-                                pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/sshuda-streamlit-app:[^\\s]+'
-
-                                text, count = re.subn(
-                                    pattern,
-                                    lambda match: match.group(1) + image,
-                                    text
-                                )
-
-                                if count != 1:
-                                    raise SystemExit(
-                                        f"Expected exactly one Streamlit image, found {count}"
-                                    )
-
-                                path.write_text(text)
-                                PY
+                                grep -q "image: ${FULL_IMAGE}" argocd/strmlit-deployment.yaml \
+                                || { echo "Image line was not updated"; exit 1; }
 
                                 git config user.name "Jenkins CI"
                                 git config user.email "jenkins@localhost"
-
                                 git add argocd/strmlit-deployment.yaml
 
-                                git commit -m "Deploy Streamlit $FULL_IMAGE"
-
-                                git push origin "HEAD:$GITOPS_BRANCH"
+                                if git diff --cached --quiet; then
+                                    echo "No GitOps changes required"
+                                else
+                                    git commit -m "Deploy Streamlit ${FULL_IMAGE}"
+                                    git -c credential.helper="$HELPER" pull --rebase origin "$GITOPS_BRANCH"
+                                    git -c credential.helper="$HELPER" push origin "HEAD:${GITOPS_BRANCH}"
+                                fi
                             '''
                         }
                     }
@@ -182,22 +151,22 @@ pipeline {
         }    
     }
 
-            post {
-                always {
-                    emailext(
-                        attachLog: true,
-                        subject: "${currentBuild.currentResult}",
-                        body: """
-                            Project: ${env.JOB_NAME}<br/>
-                            Build: ${env.BUILD_NUMBER}<br/>
-                            Image: ${env.FULL_IMAGE ?: 'Not built'}<br/>
-                            URL: ${env.BUILD_URL}<br/>
-                        """,
-                        to: 'shaikh4huda@gmail.com',
-                        attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+    post {
+        always {
+            emailext(
+                    attachLog: true,
+                    subject: "${currentBuild.currentResult}",
+                    body: """
+                        Project: ${env.JOB_NAME}<br/>
+                        Build: ${env.BUILD_NUMBER}<br/>
+                        Image: ${env.FULL_IMAGE ?: 'Not built'}<br/>
+                        URL: ${env.BUILD_URL}<br/>
+                    """,
+                    to: 'shaikh4huda@gmail.com',
+                    attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
                     )
                 }
-            }        
+    }        
        
         
 }
