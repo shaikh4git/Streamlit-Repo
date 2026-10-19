@@ -21,6 +21,17 @@ pipeline {
             }
         }
 
+        stage('Run only for relevant changes') {
+            when {
+                anyOf {
+                    changeset "app.py"
+                    changeset "Dockerfile"
+                    changeset "requirements.txt"
+                    changeset "JenkinsBluegreen"
+                }
+            }
+        }
+
         stage('Checkout from Github Repositories') {
             steps {
                 git branch: 'main',

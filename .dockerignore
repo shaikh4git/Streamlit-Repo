@@ -3,3 +3,6 @@ __pycache__/
 .git/
 *.pyc
 .env
+JenkinsSTD
+JenkinsBluegreen
+JenkinsCanary
