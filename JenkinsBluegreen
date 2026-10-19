@@ -21,17 +21,6 @@ pipeline {
             }
         }
 
-        stage('Run only for relevant changes') {
-            when {
-                anyOf {
-                    changeset "app.py"
-                    changeset "Dockerfile"
-                    changeset "requirements.txt"
-                    changeset "JenkinsBluegreen"
-                }
-            }
-        }
-
         stage('Checkout from Github Repositories') {
             steps {
                 git branch: 'main',
@@ -156,7 +145,7 @@ PY
 
                         git add bluegreen/strmlit-bluegreen.yaml
 
-                        git commit -m "Rollout Streamlit via canary strategy with $FULL_IMAGE"
+                        git commit -m "Rollout Streamlit via Bluegreen strategy with $FULL_IMAGE"
 
                         git push origin "HEAD:$GITOPS_BRANCH"
                     '''
@@ -172,7 +161,7 @@ PY
                 Image: ${env.FULL_IMAGE}
                 Repository: ${env.GITOPS_REPO}
 
-                ArgoCD will Rollout with Bluegreen strategy and reconcile the Streamlit application!
+                ArgoCD will Rollout and reconcile the Streamlit application!
                 """
             }
         }
