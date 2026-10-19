@@ -13,6 +13,19 @@ pipeline {
         GITOPS_BRANCH = 'main'
     }
 
+    stages {
+        stage ('Run only for relevant changes') {
+            when {
+                anyOf {
+                    changeset "app.py"
+                    changeset "Dockerfile"
+                    changeset "requirements.txt"
+                    changeset "JenkinsSTD"
+                }
+            }
+
+
+  
 
             stages {
                 stage('Clean Workspaces') {
@@ -95,13 +108,13 @@ pipeline {
                                 trap 'rm -rf "$AUTH_DIR"' EXIT
 
                                 cat > "$AUTH_DIR/askpass.sh" <<'EOF'
-        #!/bin/sh
-        case "$1" in
-        *Username*) printf '%s\\n' "$GIT_USERNAME" ;;
-        *Password*) printf '%s\\n' "$GIT_TOKEN" ;;
-        *) exit 1 ;;
-        esac
-        EOF
+                #!/bin/sh
+                case "$1" in
+                *Username*) printf '%s\\n' "$GIT_USERNAME" ;;
+                *Password*) printf '%s\\n' "$GIT_TOKEN" ;;
+                *) exit 1 ;;
+                esac
+                EOF
                                 chmod 700 "$AUTH_DIR/askpass.sh"
                                 export GIT_ASKPASS="$AUTH_DIR/askpass.sh"
                                 export GIT_TERMINAL_PROMPT=0
@@ -115,30 +128,30 @@ pipeline {
                                 test -f argocd/strmlit-deployment.yaml
 
                                 python3 - <<'PY'
-        import os
-        import re
-        from pathlib import Path
+                import os
+                import re
+                from pathlib import Path
 
-        path = Path("argocd/strmlit-deployment.yaml")
-        text = path.read_text()
+                path = Path("argocd/strmlit-deployment.yaml")
+                text = path.read_text()
 
-        image = os.environ["FULL_IMAGE"]
+                image = os.environ["FULL_IMAGE"]
 
-        pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/sshuda-streamlit-app:[^\\s]+'
+                pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/sshuda-streamlit-app:[^\\s]+'
 
-        text, count = re.subn(
-            pattern,
-            lambda match: match.group(1) + image,
-            text
-        )
+                text, count = re.subn(
+                    pattern,
+                    lambda match: match.group(1) + image,
+                    text
+                )
 
-        if count != 1:
-            raise SystemExit(
-                f"Expected exactly one Streamlit image, found {count}"
-            )
+                if count != 1:
+                    raise SystemExit(
+                        f"Expected exactly one Streamlit image, found {count}"
+                    )
 
-        path.write_text(text)
-        PY
+                path.write_text(text)
+                PY
 
                                 git config user.name "Jenkins CI"
                                 git config user.email "jenkins@localhost"
@@ -166,6 +179,8 @@ pipeline {
                     }
                 }
             }
+        }    
+    }
 
             post {
                 always {
@@ -182,5 +197,7 @@ pipeline {
                         attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
                     )
                 }
-            }
-        }
+            }        
+       
+        
+}
