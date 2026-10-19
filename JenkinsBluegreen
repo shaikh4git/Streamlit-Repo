@@ -13,174 +13,160 @@ pipeline {
         GITOPS_BRANCH = 'main'
     }
 
-
     stages {
-        stage('Clean Workspaces') {
-            steps {
-                cleanWs()
-            }
-        }
-
-        stage('Checkout from Github Repositories') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
-
-                script {
-                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
-                    env.FULL_IMAGE = "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
-                }
-
-                echo "Building ${env.FULL_IMAGE}"
-            }
-        }
-
-
-        stage('Docker Build & Push Streamlit image') {
-            steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'docker_cred',
-                        variable: 'DOCKER_API_KEY'
-                    )
-                ]) {
-                    sh '''
-                        set +x
-
-                        echo "$DOCKER_API_KEY" |
-                          docker login -u shaikhdocker --password-stdin
-
-                        docker buildx build \
-                          --tag "$FULL_IMAGE" \
-                          --load \
-                          .
-
-                        docker push "$FULL_IMAGE"
-                    '''
+        stage ('Run only for relevant changes') {
+            when {
+                anyOf {
+                    changeset "app.py"
+                    changeset "Dockerfile"
+                    changeset "requirements.txt"
+                    changeset "JenkinsBluegreen"
                 }
             }
-        }
-        stage('Deploy to Docker - Staging') {
-            steps {
-                sh '''
-                    docker pull "$FULL_IMAGE"
 
-                    if docker ps -aq \
-                      --filter "name=^streamlit$" | grep -q .; then
-                        docker rm -f streamlit
-                    fi
 
-                    docker run -d \
-                      --name streamlit \
-                      -p 8501:8501 \
-                      "$FULL_IMAGE"
-                '''
-            }
-        }
+  
 
-        stage('Update GitOps Repository') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'github-gitops-token',
-                        usernameVariable: 'GIT_USERNAME',
-                        passwordVariable: 'GIT_TOKEN'
-                    )
-                ]) {
-                    sh '''
-                        set -eu
-                        set +x
+            stages {
+                stage('Clean Workspaces') {
+                    steps {
+                        cleanWs()
+                    }
+                }
 
-                        AUTH_DIR="$(mktemp -d)"
-                        trap 'rm -rf "$AUTH_DIR"' EXIT
+                stage('Checkout from Github Repositories') {
+                    steps {
+                        git branch: 'main',
+                            url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
 
-                        cat > "$AUTH_DIR/askpass.sh" <<'EOF'
-#!/bin/sh
-case "$1" in
-  *Username*) printf '%s\\n' "$GIT_USERNAME" ;;
-  *Password*) printf '%s\\n' "$GIT_TOKEN" ;;
-  *) exit 1 ;;
-esac
-EOF
-                        chmod 700 "$AUTH_DIR/askpass.sh"
-                        export GIT_ASKPASS="$AUTH_DIR/askpass.sh"
-                        export GIT_TERMINAL_PROMPT=0
+                        script {
+                            env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
+                            env.FULL_IMAGE = "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
+                        }
 
-                        git clone \
-                          --branch "$GITOPS_BRANCH" \
-                          "$GITOPS_REPO" gitops
+                        echo "Building ${env.FULL_IMAGE}"
+                    }
+                }
 
-                        cd gitops
 
-                        test -f bluegreen/strmlit-bluegreen.yaml
+                stage('Docker Build & Push Streamlit image') {
+                    steps {
+                        withCredentials([
+                            string(
+                                credentialsId: 'docker_cred',
+                                variable: 'DOCKER_API_KEY'
+                            )
+                        ]) {
+                            sh '''
+                                set +x
 
-                        python3 - <<'PY'
-import os
-import re
-from pathlib import Path
+                                echo "$DOCKER_API_KEY" |
+                                docker login -u shaikhdocker --password-stdin
 
-path = Path("bluegreen/strmlit-bluegreen.yaml")
-text = path.read_text()
+                                docker buildx build \
+                                --tag "$FULL_IMAGE" \
+                                --load \
+                                .
 
-image = os.environ["FULL_IMAGE"]
+                                docker push "$FULL_IMAGE"
+                            '''
+                        }
+                    }
+                }
+                stage('Deploy to Docker - Staging') {
+                    steps {
+                        sh '''
+                            docker pull "$FULL_IMAGE"
 
-pattern = r'(?m)^(\\s*image:\\s*)shaikhdocker/sshuda-streamlit-app:[^\\s]+'
+                            if docker ps -aq \
+                            --filter "name=^streamlit$" | grep -q .; then
+                                docker rm -f streamlit
+                            fi
 
-text, count = re.subn(
-    pattern,
-    lambda match: match.group(1) + image,
-    text
-)
+                            docker run -d \
+                            --name streamlit \
+                            -p 8501:8501 \
+                            "$FULL_IMAGE"
+                        '''
+                    }
+                }
 
-if count != 1:
-    raise SystemExit(
-        f"Expected exactly one Streamlit image, found {count}"
-    )
+                stage('Update GitOps Repository') {
+                    steps {
+                        withCredentials([
+                            usernamePassword(
+                                credentialsId: 'github-gitops-token',
+                                usernameVariable: 'GIT_USERNAME',
+                                passwordVariable: 'GIT_TOKEN'
+                            )
+                        ]) {
+                            sh '''
+                                set -eu
+                                set +x
 
-path.write_text(text)
-PY
+                                export GIT_TERMINAL_PROMPT=0
+                                HELPER='!f() { echo "username=$GIT_USERNAME"; echo "password=$GIT_TOKEN"; }; f'
 
-                        git config user.name "Jenkins CI"
-                        git config user.email "jenkins@localhost"
+                                git -c credential.helper="$HELPER" clone \
+                                --branch "$GITOPS_BRANCH" "$GITOPS_REPO" gitops
+                                cd gitops
 
-                        git add bluegreen/strmlit-bluegreen.yaml
+                                test -f bluegreen/strmlit-bluegreen.yaml
 
-                        git commit -m "Rollout Streamlit via Bluegreen strategy with $FULL_IMAGE"
+                                sed -i -E "s#(image:[[:space:]]*)shaikhdocker/sshuda-streamlit-app:[^[:space:]]+#\\1${FULL_IMAGE}#" \
+                                bluegreen/strmlit-bluegreen.yaml
 
-                        git push origin "HEAD:$GITOPS_BRANCH"
-                    '''
+                                grep -q "image: ${FULL_IMAGE}" bluegreen/strmlit-bluegreen.yaml \
+                                || { echo "Image line was not updated"; exit 1; }
+
+                                git config user.name "Jenkins CI"
+                                git config user.email "jenkins@localhost"
+                                git add bluegreen/strmlit-bluegreen.yaml
+
+                                if git diff --cached --quiet; then
+                                    echo "No GitOps changes required"
+                                else
+                                    git commit -m "Deploy Streamlit ${FULL_IMAGE}"
+                                    git -c credential.helper="$HELPER" pull --rebase origin "$GITOPS_BRANCH"
+                                    git -c credential.helper="$HELPER" push origin "HEAD:${GITOPS_BRANCH}"
+                                fi
+                            '''
+                        }
+                    }
+                }
+
+                stage('GitOps Commit Published') {
+                    steps {
+                        echo """
+                        Jenkins pushed the approved image tag to Git.
+
+                        Image: ${env.FULL_IMAGE}
+                        Repository: ${env.GITOPS_REPO}
+
+                        Argo CD will reconcile the Streamlit application in canary rollout strategy!
+                        """
+                    }
                 }
             }
-        }
-
-        stage('GitOps Commit Published') {
-            steps {
-                echo """
-                Jenkins pushed the approved image tag to Git.
-
-                Image: ${env.FULL_IMAGE}
-                Repository: ${env.GITOPS_REPO}
-
-                ArgoCD will Rollout and reconcile the Streamlit application!
-                """
-            }
-        }
+        }    
     }
 
     post {
         always {
             emailext(
-                attachLog: true,
-                subject: "${currentBuild.currentResult}",
-                body: """
-                    Project: ${env.JOB_NAME}<br/>
-                    Build: ${env.BUILD_NUMBER}<br/>
-                    Image: ${env.FULL_IMAGE ?: 'Not built'}<br/>
-                    URL: ${env.BUILD_URL}<br/>
-                """,
-                to: 'shaikh4huda@gmail.com',
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
-            )
-        }
-    }
+                    attachLog: true,
+                    subject: "${currentBuild.currentResult}",
+                    body: """
+                        Project: ${env.JOB_NAME}<br/>
+                        Build: ${env.BUILD_NUMBER}<br/>
+                        Image: ${env.FULL_IMAGE ?: 'Not built'}<br/>
+                        URL: ${env.BUILD_URL}<br/>
+                    """,
+                    to: 'shaikh4huda@gmail.com',
+                    attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+                    )
+                }
+    }        
+       
+        
 }
