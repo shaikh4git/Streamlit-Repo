@@ -24,15 +24,13 @@ pipeline {
                 }
             }
 
-
-  
-
             stages {
                 stage('Clean Workspaces') {
                     steps {
                         cleanWs()
                     }
                 }
+                
 
                 stage('Checkout from Github Repositories') {
                     steps {
@@ -48,6 +46,33 @@ pipeline {
                     }
                 }
 
+                stage("Sonarqube Analysis "){
+                    steps{
+                        withSonarQubeEnv('sonar-server') {
+                            sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Streamlit \
+                            -Dsonar.projectKey=Streamlit '''
+                        }
+                    }
+                }
+                stage("quality gate"){
+                    steps {
+                        script {
+                            waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
+                        }
+                    } 
+                }
+
+                stage('OWASP FS SCAN') {
+                    steps {
+                        dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                    }
+                }
+                stage('TRIVY FS SCAN') {
+                    steps {
+                        sh "trivy fs . > trivyfs.txt"
+                    }
+                }
 
                 stage('Docker Build & Push Streamlit image') {
                     steps {
@@ -73,6 +98,16 @@ pipeline {
                         }
                     }
                 }
+
+                stage("TRIVY"){
+                    steps{
+                        sh "trivy image nasi101/netflix:latest > trivyimage.txt" 
+                    }
+                }
+
+
+
+
                 stage('Deploy to Docker - Staging') {
                     steps {
                         sh '''
