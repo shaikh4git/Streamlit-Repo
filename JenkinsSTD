@@ -49,7 +49,7 @@ pipeline {
                 stage("Sonarqube Analysis "){
                     steps{
                         withSonarQubeEnv('sonar-server') {
-                            sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Streamlit \
+                            sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
                             -Dsonar.projectKey=Streamlit '''
                         }
                     }
@@ -70,7 +70,8 @@ pipeline {
                 }
                 stage('TRIVY FS SCAN') {
                     steps {
-                        sh "trivy fs . > trivyfs.txt"
+                        sh "/home/jenkins/bin/trivy fs . "
+                        sh "/home/jenkins/bin/trivy fs . > trivyfs.txt"
                     }
                 }
 
@@ -101,11 +102,9 @@ pipeline {
 
                 stage("TRIVY"){
                     steps{
-                        sh "trivy image nasi101/netflix:latest > trivyimage.txt" 
+                        sh "/home/jenkins/bin/trivy image shaikhdocker/$FULL_IMAGE > trivyimage.txt" 
                     }
                 }
-
-
 
 
                 stage('Deploy to Docker - Staging') {
