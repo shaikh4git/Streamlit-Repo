@@ -46,6 +46,36 @@ pipeline {
                     }
                 }
 
+                stage("Sonarqube Analysis "){
+                    steps{
+                        withSonarQubeEnv('sonar-server') {
+                            sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
+                            -Dsonar.projectKey=Streamlit '''
+                        }
+                    }
+                }
+                stage("quality gate"){
+                    steps {
+                        script {
+                            waitForQualityGate abortPipeline: true, credentialsId: 'Sonar-token' 
+                        }
+                    } 
+                }
+               /*
+                stage('OWASP FS SCAN') {
+                    steps {
+                        dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'*/
+                  //      dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+              /*      }
+                }
+                */
+                stage('TRIVY FS SCAN') {
+                    steps {
+                        sh "/home/jenkins/bin/trivy fs . "
+                        sh "/home/jenkins/bin/trivy fs . > trivyfs.txt"
+                    }
+                }
+
 
                 stage('Docker Build & Push Streamlit image') {
                     steps {
@@ -71,6 +101,13 @@ pipeline {
                         }
                     }
                 }
+
+                stage("TRIVY"){
+                    steps{
+                        sh "/home/jenkins/bin/trivy image $FULL_IMAGE > trivyimage.txt" 
+                    }
+                }
+
                 stage('Deploy to Docker - Staging') {
                     steps {
                         sh '''
