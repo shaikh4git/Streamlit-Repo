@@ -104,7 +104,7 @@ pipeline {
 
                 stage("TRIVY"){
                     steps{
-                        sh "/home/jenkins/bin/trivy image shaikhdocker/$FULL_IMAGE > trivyimage.txt" 
+                        sh "/home/jenkins/bin/trivy image $FULL_IMAGE > trivyimage.txt" 
                     }
                 }
 
