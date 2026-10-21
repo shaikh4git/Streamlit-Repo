@@ -105,7 +105,7 @@ pipeline {
                     }
                 }
 
-                /*stage("TRIVY"){
+                /* stage("TRIVY"){
                     steps{
                         sh "/home/jenkins/bin/trivy image $FULL_IMAGE > trivyimage.txt" 
                     }

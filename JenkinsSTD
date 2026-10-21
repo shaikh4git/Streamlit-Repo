@@ -46,7 +46,7 @@ pipeline {
                     }
                 }
 
-                /*stage("Sonarqube Analysis "){
+                /* stage("Sonarqube Analysis "){
                     steps{
                         withSonarQubeEnv('sonar-server') {
                             sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
