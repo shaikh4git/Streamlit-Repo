@@ -48,18 +48,33 @@ pipeline {
 
                 stage('Secret Scan - Gitleaks') {
                     steps {
-                        sh '''
-                        git fetch --unshallow || true
-                        /usr/local/bin/gitleaks git --source . --redact \
-                            --report-format json --report-path gitleaks-report.json
-                        '''
+                        script {
+                            sh '''
+                                echo "Checking Git repository history..."
+
+                                if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+                                    git fetch --unshallow
+                                else
+                                    echo "Repository already has full history"
+                                fi
+
+                                echo "Starting Gitleaks security scan..."
+
+                                gitleaks git . \
+                                    --redact \
+                                    --report-format json \
+                                    --report-path gitleaks-report.json
+                            '''
+                        }
                     }
+
                     post {
                         always {
                         archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
                         }
                     }
                 }
+
 
                 /* stage("Sonarqube Analysis "){
                     steps{
