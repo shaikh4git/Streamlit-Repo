@@ -50,7 +50,7 @@ pipeline {
                     steps {
                         sh '''
                         git fetch --unshallow || true
-                        gitleaks git --source . --redact \
+                        /usr/local/bin/gitleaks git --source . --redact \
                             --report-format json --report-path gitleaks-report.json
                         '''
                     }
