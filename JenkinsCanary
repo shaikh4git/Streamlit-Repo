@@ -67,8 +67,9 @@ pipeline {
                
                 stage('OWASP FS SCAN') {
                     steps {
-                        dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'*/
-                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                        sh 'echo "Skipping the dependencyChecks OWASP Scan for now, uncomment the below two lines in the pipeline when you are on WIFI" ' 
+                        // dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                        // dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
                     }
                 }
                 
