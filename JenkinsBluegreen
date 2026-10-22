@@ -46,7 +46,20 @@ pipeline {
                         echo "Building ${env.FULL_IMAGE}"
                     }
                 }
-
+                stage('Secret Scan - Gitleaks') {
+                    steps {
+                        sh '''
+                        git fetch --unshallow || true
+                        gitleaks git --source . --redact \
+                            --report-format json --report-path gitleaks-report.json
+                        '''
+                    }
+                    post {
+                        always {
+                        archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
+                        }
+                    }
+                }
                 /*stage("Sonarqube Analysis "){
                     steps{
                         withSonarQubeEnv('sonar-server') {
