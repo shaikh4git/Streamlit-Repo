@@ -46,7 +46,7 @@ pipeline {
                         echo "Building ${env.FULL_IMAGE}"
                     }
                 }
-                stage('Secret Scan - Gitleaks') {
+                stage('Gitleaks Secret Scanning') {
                     steps {
                         script {
                             sh '''
