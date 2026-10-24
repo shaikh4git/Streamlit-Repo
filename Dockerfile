@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy dependencies
 COPY requirements.txt .
 
-# Install dependencies during image build along with the Cache downloaded Python packages
+# Install dependencies during image build along with the Cache downloaded Python packages both Docker layer and pip cache to speed up future builds.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
