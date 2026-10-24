@@ -21,7 +21,7 @@ pipeline {
                     changeset "Dockerfile"
                     changeset "requirements.txt"
                     changeset "JenkinsSTD"
-                    changeset "/tests/test_app.py"
+                    changeset "tests/test_app.py"
                 }
             }
 
