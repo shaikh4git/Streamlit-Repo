@@ -89,19 +89,6 @@ pipeline {
                     }
                 }
 
-                stage('Streamlit Application Testing') {
-                    steps {
-                        sh '''
-                            echo "Checking Python syntax..."
-                            .venv/bin/python -m py_compile app.py
-
-                            echo "Running Streamlit unit tests..."
-                            .venv/bin/python -m pytest tests/ -v
-
-                            echo "Streamlit application testing completed."
-                        '''
-                    }
-                }                
 
 
                 stage("Sonarqube Analysis "){
@@ -120,7 +107,20 @@ pipeline {
                     } 
                 }
                 
-               
+                stage('Streamlit Application Testing') {
+                    steps {
+                        sh '''
+                            echo "Checking Python syntax..."
+                            .venv/bin/python -m py_compile app.py
+
+                            echo "Running Streamlit unit tests..."
+                            .venv/bin/python -m pytest tests/ -v
+
+                            echo "Streamlit application testing completed."
+                        '''
+                    }
+                }                
+
                 stage('OWASP FS SCAN') {
                     steps {
                         sh 'echo "Skipping the dependencyChecks OWASP Scan for now, uncomment the below two lines in the pipeline when you are on WIFI" ' 
