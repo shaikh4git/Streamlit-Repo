@@ -116,7 +116,7 @@ pipeline {
                             echo "Running Streamlit unit tests..."
                             .venv/bin/python -m pytest tests/ -v
 
-                            echo "Streamlit application testing completed."
+                            echo "Streamlit application testing completed!"
                         '''
                     }
                 }                
