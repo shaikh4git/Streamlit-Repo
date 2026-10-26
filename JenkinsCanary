@@ -78,7 +78,7 @@ pipeline {
                     }
                 }
 
-                stage('Install Python Dependencies') {
+                stage('Install Python Dependencies for Streamlit Application Testing') {
                     steps {
                         sh '''
                             python3 -m venv .venv
