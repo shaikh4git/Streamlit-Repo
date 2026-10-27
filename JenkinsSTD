@@ -133,7 +133,7 @@ pipeline {
                     }
                 } */
 
-                stage('Docker Build & Push Streamlit image') {
+                stage('Docker Build & Push Streamlit image - DockerHub artifacts Registry') {
                     steps {
                         withCredentials([
                             string(
@@ -163,6 +163,39 @@ pipeline {
                         sh "/home/jenkins/bin/trivy image $FULL_IMAGE > trivyimage.txt" 
                     }
                 } */
+
+
+                stage('Deploy to Docker Desktop Staging - Ansible') {
+                    steps {
+                        sh '''
+                            ansible-playbook \
+                            -i localhost, \
+                            ansible/staging.yml \
+                            -e "image_repo=$IMAGE_REPO" \
+                            -e "image_tag=$IMAGE_TAG"
+                        '''
+                    }
+                }
+
+                stage('Validate Streamlit Staging') {
+                    steps {
+                        sh '''
+                            curl --fail \
+                            --retry 10 \
+                            --retry-delay 3 \
+                            --retry-connrefused \
+                            http://host.docker.internal:8502/_stcore/health
+                        '''
+                    }
+                }
+
+                stage('Approve Production Deployment') {
+                    steps {
+                        input message: 'Deploy Streamlit to Kubernetes?',
+                            ok: 'Approve Deployment'
+                    }
+                }
+
 
 
                 stage('Deploy to Docker - Staging') {
