@@ -1,6 +1,6 @@
 
 pipeline {
-    agent { label 'DevopsAgentLabelV7' }
+    agent { label 'DevopsAgentLabelV8' }
 
     options {
         disableConcurrentBuilds()
@@ -22,6 +22,7 @@ pipeline {
                     changeset "requirements.txt"
                     changeset "JenkinsSTD"
                     changeset "tests/test_app.py"
+                    changeset "ansible/**"
                 }
             }
 
