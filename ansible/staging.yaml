@@ -6,11 +6,18 @@
   gather_facts: false
 
   vars:
-    ansible_python_interpreter: "{{ playbook_dir }}/.venv/bin/python"
-    image_repo: "shaikhdocker/sshuda-streamlit-app"
-    image_tag: "54-74c6783"
-    container_name: "streamlit-staging"
-    staging_port: 8502
+    ansible_python_interpreter: /opt/ansible/bin/python
+
+  tasks:
+    - name: Pull and run Streamlit container
+      community.docker.docker_container:
+        name: streamlit-staging
+        image: "{{ image_repo }}:{{ image_tag }}"
+        state: started
+        pull: always
+        restart_policy: unless-stopped
+        published_ports:
+          - "8502:8501"
 
   tasks:
     - name: Pull and run Streamlit container
