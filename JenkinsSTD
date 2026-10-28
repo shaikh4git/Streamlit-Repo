@@ -110,7 +110,7 @@ pipeline {
                         }
                     }
                 }
-                stage("quality gate"){
+                stage("Quality Gate Checkpoint"){
                     steps {
                         script {
                             waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
@@ -189,15 +189,6 @@ pipeline {
                     }
                 }
 
-                stage('Approve Production Deployment') {
-                    steps {
-                        input message: 'Deploy Streamlit to Kubernetes?',
-                            ok: 'Approve Deployment'
-                    }
-                }
-
-
-
                 stage('Deploy to Docker - Staging!!') {
                     steps {
                         sh '''
@@ -215,6 +206,16 @@ pipeline {
                         '''
                     }
                 }
+
+
+                stage('Approve Production Deployment') {
+                    steps {
+                        input message: 'Deploy Streamlit to Kubernetes?',
+                            ok: 'Approve Deployment'
+                    }
+                }
+
+
 
                 stage('Update GitOps Repository') {
                     steps {
