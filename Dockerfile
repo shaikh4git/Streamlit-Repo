@@ -9,6 +9,9 @@ COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r requirements.txt
 
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m venv /opt/ansible && \
+    /opt/ansible/bin/python -m pip install ansible requests docker
 # Copy Streamlit application
 COPY app.py .
 
