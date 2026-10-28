@@ -102,7 +102,7 @@ pipeline {
                     }
                 }                
 
-                /* stage("Sonarqube Analysis "){
+                stage("Sonarqube Analysis "){
                     steps{
                         withSonarQubeEnv('sonar-server') {
                             sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
@@ -116,7 +116,7 @@ pipeline {
                             waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
                         }
                     } 
-                } */
+                } 
 
                /*
                 stage('OWASP FS SCAN') {
@@ -170,7 +170,7 @@ pipeline {
                         sh '''
                             ansible-playbook \
                             -i localhost, \
-                            ansible/staging.yml \
+                            ansible/staging.yaml \
                             -e "image_repo=$IMAGE_REPO" \
                             -e "image_tag=$IMAGE_TAG"
                         '''
