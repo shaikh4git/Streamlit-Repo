@@ -3,7 +3,10 @@ __pycache__/
 .git/
 *.pyc
 .env
+.gitignore
 tests/test_app.py
 JenkinsSTD
 JenkinsBluegreen
 JenkinsCanary
+ansible/**
+README

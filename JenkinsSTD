@@ -48,7 +48,7 @@ pipeline {
                     }
                 }
 
-                stage('Gitleaks Secret Scanning') {
+                stage('Gitleaks Secret Scanning!') {
                     steps {
                         script {
                             sh '''
