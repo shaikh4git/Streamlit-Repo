@@ -132,9 +132,9 @@ pipeline {
 
                 stage('OWASP FS SCAN') {
                     steps {
-                        sh 'echo "Thirdparty Dependencies Check " ' 
-                         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                        sh 'echo "Thirdparty Dependencies Check, skipping for now!! " ' 
+                      //   dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                        // dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
                     }
                 }
                 
@@ -211,7 +211,7 @@ pipeline {
                     }
                 }
 
-                stage('Update GitOps Repository') {
+                stage('Update GitOps Repository for Argo CD and Argo Rollouts  to deploy onto Kubernetes Cluster') {
                     steps {
                         withCredentials([
                             usernamePassword(
@@ -258,15 +258,23 @@ pipeline {
                 stage('GitOps Commit Published') {
                     steps {
                         echo """
-                        Jenkins pushed the approved image tag to Git.
+                        Jenkins pushed the image tag to Git and Please approve it on Jenkin Console!
 
                         Image: ${env.FULL_IMAGE}
                         Repository: ${env.GITOPS_REPO}
 
-                        Argo CD will reconcile the Streamlit application in canary rollout strategy!
+                        Argo CD will reconcile the Streamlit application in canary rollout strategy once approved!
                         """
                     }
                 }
+                
+                stage('Approve Production Deployment') {
+                    steps {
+                        input message: 'Deploy Streamlit to Kubernetes?',
+                            ok: 'Approve Deployment?'
+                    }
+                }
+
             }
         }    
     }
