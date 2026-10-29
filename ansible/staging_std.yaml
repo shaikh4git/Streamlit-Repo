@@ -34,4 +34,4 @@
 
     - name: Display deployment result
       ansible.builtin.debug:
-        msg: "Streamlit staging is healthy. Image: {{ image_repo }}:{{ image_tag }}"
+        msg: "Streamlit staging is healthy at the URL- http://localhost:{{ staging_port }}!! for the Image: {{ image_repo }}:{{ image_tag }}"

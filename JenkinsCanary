@@ -261,14 +261,7 @@ pipeline {
                         Argo CD will reconcile the Streamlit application in canary rollout strategy once approved!
                         """
                     }
-                }
-                
-                stage('Approve Production Deployment') {
-                    steps {
-                        input message: 'Deploy Streamlit to Kubernetes?',
-                            ok: 'Approve Deployment?'
-                    }
-                }
+                }       
 
             }
         }    
