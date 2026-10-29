@@ -3,11 +3,10 @@ pipeline {
     agent { label 'DevopsAgentLabelV8' }
 
     options {
-        skipDefaultCheckout(true)
         disableConcurrentBuilds()
         timestamps()
     }
-    triggers { githubPush()}
+    triggers { githubPush() }
 
     environment {
         IMAGE_REPO = 'shaikhdocker/sshuda-streamlit-app'
