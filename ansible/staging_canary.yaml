@@ -7,8 +7,8 @@
 
   vars:
     ansible_python_interpreter: /opt/ansible/bin/python
-    container_name: streamlit-staging
-    staging_port: 8502
+    container_name: streamlit-staging-canary
+    staging_port: 8503
 
   tasks:
     - name: Pull and run Streamlit container

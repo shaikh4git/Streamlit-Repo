@@ -53,6 +53,7 @@ pipeline {
                     changeset "requirements.txt"
                     changeset "JenkinsCanary"
                     changeset "tests/test_app.py"
+                    changeset "ansible/staging_canary.yaml"
                 }
             }
 
@@ -193,20 +194,14 @@ pipeline {
                 }
 
 
-                stage('Deploy to Docker - Staging Environment!') {
+                stage('Deploy to Docker Desktop Staging - via Ansible') {
                     steps {
                         sh '''
-                            docker pull "$FULL_IMAGE"
-
-                            if docker ps -aq \
-                            --filter "name=^streamlit$" | grep -q .; then
-                                docker rm -f streamlit
-                            fi
-
-                            docker run -d \
-                            --name streamlit \
-                            -p 8501:8501 \
-                            "$FULL_IMAGE"
+                            ansible-playbook \
+                            -i localhost, \
+                            ansible/staging_canary.yaml \
+                            -e "image_repo=$IMAGE_REPO" \
+                            -e "image_tag=$IMAGE_TAG"
                         '''
                     }
                 }

@@ -14,6 +14,34 @@ pipeline {
     }
 
     stages {
+
+        stage('Clean Workspaces') {
+            steps { cleanWs() }
+                }
+
+        stage('Checkout GitHub') {
+            steps {
+                checkout(
+                    changelog: true,
+                    poll: true,
+                    scm: scmGit(
+                        branches: [[name: '*/main']],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
+                        ]]
+                    )
+                )
+                script {
+                    env.IMAGE_TAG =
+                        "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
+                    env.FULL_IMAGE =
+                        "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
+
+                    echo "Changelog sets: ${currentBuild.changeSets.size()}"
+                }
+            }
+        }
+
         stage ('Run only for relevant changes!!') {
             when {
                 anyOf {
@@ -22,31 +50,12 @@ pipeline {
                     changeset "requirements.txt"
                     changeset "JenkinsBluegreen"
                     changeset "tests/test_app.py"
+                    changeset "ansible/blugren.yaml"
                 }
             }
   
-
             stages {
-                stage('Clean Workspaces') {
-                    steps {
-                        cleanWs()
-                    }
-                }
-                
 
-                stage('Checkout from Github Repositories') {
-                    steps {
-                        git branch: 'main',
-                            url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
-
-                        script {
-                            env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
-                            env.FULL_IMAGE = "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
-                        }
-
-                        echo "Building ${env.FULL_IMAGE}"
-                    }
-                }
                 stage('Gitleaks Secret Scanning') {
                     steps {
                         script {
@@ -134,28 +143,18 @@ pipeline {
                 }*/
 
 
-                stage('Docker Build & Push Streamlit image!') {
+                stage('Docker Build Streamlit Image') {
                     steps {
-                        withCredentials([
-                            string(
-                                credentialsId: 'docker_cred',
-                                variable: 'DOCKER_API_KEY'
-                            )
-                        ]) {
-                            sh '''
-                                set +x
+                        sh '''
+                            echo "Building Docker image: $FULL_IMAGE"
 
-                                echo "$DOCKER_API_KEY" |
-                                docker login -u shaikhdocker --password-stdin
-
-                                docker buildx build \
+                            docker buildx build \
                                 --tag "$FULL_IMAGE" \
                                 --load \
                                 .
 
-                                docker push "$FULL_IMAGE"
-                            '''
-                        }
+                            echo "Docker image $FULL_IMAGE is built successfully"
+                        '''
                     }
                 }
 
@@ -165,23 +164,43 @@ pipeline {
                     }
                 } */
 
-                stage('Deploy to Docker - Staging') {
+                stage('Docker Push to Docker Hub') {
+                    steps {
+                        withCredentials([
+                            string(
+                                credentialsId: 'docker_cred',
+                                variable: 'DOCKER_API_KEY'
+                            )
+                        ]) {
+                            sh '''
+                                set -e
+                                set +x
+
+                                echo "$DOCKER_API_KEY" |
+                                    docker login -u shaikhdocker --password-stdin
+
+                                echo "Pushing image: $FULL_IMAGE"
+
+                                docker push "$FULL_IMAGE"
+
+                                echo "Docker image pushed successfully"
+                            '''
+                        }
+                    }
+                }
+
+                stage('Deploy to Docker Desktop Staging - via Ansible') {
                     steps {
                         sh '''
-                            docker pull "$FULL_IMAGE"
-
-                            if docker ps -aq \
-                            --filter "name=^streamlit$" | grep -q .; then
-                                docker rm -f streamlit
-                            fi
-                
-                            docker run -d \
-                            --name streamlit \
-                            -p 8501:8501 \
-                            "$FULL_IMAGE"
+                            ansible-playbook \
+                            -i localhost, \
+                            ansible/staging_blugren.yaml \
+                            -e "image_repo=$IMAGE_REPO" \
+                            -e "image_tag=$IMAGE_TAG"
                         '''
                     }
                 }
+
 
                 stage('Update GitOps Repository') {
                     steps {

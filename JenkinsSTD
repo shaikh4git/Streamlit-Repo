@@ -49,7 +49,7 @@ pipeline {
                     changeset "requirements.txt"
                     changeset "JenkinsSTD"
                     changeset "tests/test_app.py"
-                    changeset "ansible/**"
+                    changeset "ansible/staging_std.yaml"
                 }
             }
 
