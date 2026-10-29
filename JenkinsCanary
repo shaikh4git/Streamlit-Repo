@@ -3,7 +3,6 @@ pipeline {
     agent { label 'DevopsAgentLabelV7' }
 
     options {
-        skipDefaultCheckout(true)
         disableConcurrentBuilds()
         timestamps()
     }
@@ -57,7 +56,7 @@ pipeline {
                                 if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
                                     git fetch --unshallow
                                 else
-                                    echo "Repository already has full history"
+                                    echo "Repository already has full history."
                                 fi
 
                                 echo "Starting Gitleaks security scan..."
