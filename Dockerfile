@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m venv /opt/ansible && \
     /opt/ansible/bin/python -m pip install ansible requests docker
-# Copy Streamlit application
+# Copy Streamlit application!!
 COPY app.py .
 
 # Create a non-root user and set ownership
