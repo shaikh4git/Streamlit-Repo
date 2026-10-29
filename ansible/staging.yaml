@@ -24,7 +24,7 @@
 
     - name: Verify Streamlit health
       ansible.builtin.uri:
-        url: "http://127.0.0.1:{{ staging_port }}/_stcore/health"
+        url: "http://host.docker.internal:{{ staging_port }}/_stcore/health"
         method: GET
         status_code: 200
       register: health
