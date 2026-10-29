@@ -6,8 +6,6 @@ pipeline {
         disableConcurrentBuilds()
         timestamps()
     }
-    triggers { githubPush() }
-
     environment {
         IMAGE_REPO = 'shaikhdocker/sshuda-streamlit-app'
         GITOPS_REPO = 'https://github.com/shaikh4git/Streamlit-GitOps.git'
