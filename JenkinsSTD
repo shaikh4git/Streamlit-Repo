@@ -109,7 +109,7 @@ pipeline {
                     }
                 }                
 
-                stage("Sonarqube Analysis "){
+            /*    stage("Sonarqube Analysis "){
                     steps{
                         withSonarQubeEnv('sonar-server') {
                             sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
@@ -123,16 +123,16 @@ pipeline {
                             waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
                         }
                     } 
-                } 
+                } */
 
                /*
                 stage('OWASP FS SCAN') {
                     steps {
-                        dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'*/
+                        dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'  */
                   //      dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
               /*      }
-                }
-                */
+                }*/
+                
                 /* stage('TRIVY FS SCAN') {
                     steps {
                         sh "/home/jenkins/bin/trivy fs . "
@@ -172,7 +172,7 @@ pipeline {
                 } */
 
 
-                stage('Deploy to Docker Desktop Staging - Ansible') {
+                stage('Deploy to Docker Desktop Staging - using Ansible') {
                     steps {
                         sh '''
                             ansible-playbook \
