@@ -132,9 +132,9 @@ pipeline {
 
                 stage('OWASP FS SCAN') {
                     steps {
-                        sh 'echo "Skipping the dependencyChecks OWASP Scan for now, uncomment the below two lines in the pipeline when you are on WIFI" ' 
-                        // dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                        // dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                        sh 'echo "Thirdparty Dependencies Check " ' 
+                         dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                         dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
                     }
                 }
                 
@@ -146,28 +146,18 @@ pipeline {
                     }
                 } 
 
-                stage('Docker Build & Push Streamlit image') {
+                stage('Docker Build Streamlit Image') {
                     steps {
-                        withCredentials([
-                            string(
-                                credentialsId: 'docker_cred',
-                                variable: 'DOCKER_API_KEY'
-                            )
-                        ]) {
-                            sh '''
-                                set +x
+                        sh '''
+                            echo "Building Docker image: $FULL_IMAGE"
 
-                                echo "$DOCKER_API_KEY" |
-                                docker login -u shaikhdocker --password-stdin
-
-                                docker buildx build \
+                            docker buildx build \
                                 --tag "$FULL_IMAGE" \
                                 --load \
                                 .
 
-                                docker push "$FULL_IMAGE"
-                            '''
-                        }
+                            echo "Docker image built successfully"
+                        '''
                     }
                 }
 
@@ -176,6 +166,31 @@ pipeline {
                         sh "/home/jenkins/bin/trivy image $FULL_IMAGE > trivyimage.txt" 
                     }
                 } 
+
+                stage('Docker Push to Docker Hub') {
+                    steps {
+                        withCredentials([
+                            string(
+                                credentialsId: 'docker_cred',
+                                variable: 'DOCKER_API_KEY'
+                            )
+                        ]) {
+                            sh '''
+                                set -e
+                                set +x
+
+                                echo "$DOCKER_API_KEY" |
+                                    docker login -u shaikhdocker --password-stdin
+
+                                echo "Pushing image: $FULL_IMAGE"
+
+                                docker push "$FULL_IMAGE"
+
+                                echo "Docker image pushed successfully"
+                            '''
+                        }
+                    }
+                }
 
 
                 stage('Deploy to Docker - Staging Environment!') {

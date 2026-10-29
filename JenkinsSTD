@@ -159,7 +159,7 @@ pipeline {
                                 --load \
                                 .
 
-                               # docker push "$FULL_IMAGE"
+                                docker push "$FULL_IMAGE"
                             '''
                         }
                     }
