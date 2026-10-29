@@ -16,7 +16,7 @@
         name: "{{ container_name }}"
         image: "{{ image_repo }}:{{ image_tag }}"
         state: started
-        pull: always
+        pull: never
         recreate: true
         restart_policy: unless-stopped
         published_ports:
