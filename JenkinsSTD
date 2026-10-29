@@ -177,7 +177,7 @@ pipeline {
                         sh '''
                             ansible-playbook \
                             -i localhost, \
-                            ansible/staging.yaml \
+                            ansible/staging_std.yaml \
                             -e "image_repo=$IMAGE_REPO" \
                             -e "image_tag=$IMAGE_TAG"
                         '''
