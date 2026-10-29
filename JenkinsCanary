@@ -14,6 +14,37 @@ pipeline {
     }
 
     stages {
+
+
+        stage('Clean Workspaces') {
+            steps { cleanWs() }
+                }
+ 
+        stage('Checkout GitHub') {
+            steps {
+                checkout(
+                    changelog: true,
+                    poll: true,
+                    scm: scmGit(
+                        branches: [[name: '*/main']],
+                        userRemoteConfigs: [[
+                            url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
+                        ]]
+                    )
+                )
+
+                script {
+                    env.IMAGE_TAG =
+                        "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
+                    env.FULL_IMAGE =
+                        "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
+
+                    echo "Changelog sets: ${currentBuild.changeSets.size()}"
+                }
+            }
+        }
+
+        
         stage ('Run only for relevant changes!!') {
             when {
                 anyOf {
@@ -25,28 +56,8 @@ pipeline {
                 }
             }
 
-
             stages {
-                stage('Clean Workspaces') {
-                    steps {
-                        cleanWs()
-                    }
-                }
-
-                stage('Checkout from Github Repositories') {
-                    steps {
-                        git branch: 'main',
-                            url: 'https://github.com/shaikh4git/Streamlit-Repo.git'
-
-                        script {
-                            env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(7)}"
-                            env.FULL_IMAGE = "${env.IMAGE_REPO}:${env.IMAGE_TAG}"
-                        }
-
-                        echo "Building ${env.FULL_IMAGE}"
-                    }
-                }
-                
+             
                 stage('Gitleaks Secret Scanning') {
                     steps {
                         script {
