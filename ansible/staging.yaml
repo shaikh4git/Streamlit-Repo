@@ -7,17 +7,8 @@
 
   vars:
     ansible_python_interpreter: /opt/ansible/bin/python
-
-  tasks:
-    - name: Pull and run Streamlit container
-      community.docker.docker_container:
-        name: streamlit-staging
-        image: "{{ image_repo }}:{{ image_tag }}"
-        state: started
-        pull: always
-        restart_policy: unless-stopped
-        published_ports:
-          - "8502:8501"
+    container_name: streamlit-staging
+    staging_port: 8502
 
   tasks:
     - name: Pull and run Streamlit container
@@ -43,4 +34,4 @@
 
     - name: Display deployment result
       ansible.builtin.debug:
-        msg: "Streamlit staging is healthy"
+        msg: "Streamlit staging is healthy. Image: {{ image_repo }}:{{ image_tag }}"
