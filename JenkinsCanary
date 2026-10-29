@@ -3,6 +3,7 @@ pipeline {
     agent { label 'DevopsAgentLabelV7' }
 
     options {
+        skipDefaultCheckout(true)
         disableConcurrentBuilds()
         timestamps()
     }
