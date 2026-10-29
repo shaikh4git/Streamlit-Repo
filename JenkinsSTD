@@ -7,6 +7,7 @@ pipeline {
         disableConcurrentBuilds()
         timestamps()
     }
+    triggers { githubPush()}
 
     environment {
         IMAGE_REPO = 'shaikhdocker/sshuda-streamlit-app'
@@ -15,7 +16,7 @@ pipeline {
     }
 
     stages {
-        stage ('Run only for relevant changes!!!!!') {
+        stage ('Run only for relevant changes!!!') {
             when {
                 anyOf {
                     changeset "app.py"
