@@ -172,7 +172,7 @@ pipeline {
                 } */
 
 
-                stage('Deploy to Docker Desktop Staging - using Ansible') {
+                stage('Deploy to Docker Desktop Staging!!- VIA Ansible') {
                     steps {
                         sh '''
                             ansible-playbook \
