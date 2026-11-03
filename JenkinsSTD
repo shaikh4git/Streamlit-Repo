@@ -191,7 +191,7 @@ pipeline {
                             --retry 10 \
                             --retry-delay 3 \
                             --retry-connrefused \
-                            http://host.docker.internal:8502/_stcore/health
+                            http://host.docker.internal:8501/_stcore/health
                         '''
                     }
                 }
