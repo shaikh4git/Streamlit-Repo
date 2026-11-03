@@ -142,8 +142,8 @@ pipeline {
                 
                 stage('TRIVY FS SCAN') {
                     steps {
-                        sh "/home/jenkins/bin/trivy fs . "
-                        sh "/home/jenkins/bin/trivy fs . > trivyfs.txt"
+                        sh "trivy fs . "
+                        sh "trivy fs . > trivyfs.txt"
                     }
                 } 
 
@@ -164,7 +164,7 @@ pipeline {
 
                  stage("TRIVY"){
                     steps{
-                        sh "/home/jenkins/bin/trivy image $FULL_IMAGE > trivyimage.txt" 
+                        sh "trivy image $FULL_IMAGE > trivyimage.txt" 
                     }
                 } 
 
