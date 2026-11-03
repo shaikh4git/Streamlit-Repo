@@ -1,6 +1,6 @@
 
 pipeline {
-    agent { label 'DevopsAgentLabelV8' }
+    agent { label 'DevopsAgentLabelV9' }
 
     options {
         disableConcurrentBuilds()
