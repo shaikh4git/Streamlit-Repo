@@ -15,11 +15,10 @@ pipeline {
 
     stages {
 
-
         stage('Clean Workspaces!!!') {
             steps { cleanWs() }
-                }
- 
+        }
+
         stage('Checkout GitHub') {
             steps {
                 checkout(
@@ -44,21 +43,19 @@ pipeline {
             }
         }
 
-        
-        stage ('Run only for relevant changes!!!') {
+        stage('Run only for relevant changes!!!!') {
             when {
                 anyOf {
-                    changeset "app.py"
-                    changeset "Dockerfile"
-                    changeset "requirements.txt"
-                    changeset "JenkinsCanary"
-                    changeset "tests/test_app.py"
-                    changeset "ansible/staging_canary.yaml"
+                    changeset 'app.py'
+                    changeset 'Dockerfile'
+                    changeset 'requirements.txt'
+                    changeset 'JenkinsCanary'
+                    changeset 'tests/test_app.py'
+                    changeset 'ansible/staging_canary.yaml'
                 }
             }
 
             stages {
-             
                 stage('Gitleaks Secret Scanning') {
                     steps {
                         script {
@@ -83,7 +80,7 @@ pipeline {
 
                     post {
                         always {
-                        archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
+                            archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true
                         }
                     }
                 }
@@ -99,24 +96,22 @@ pipeline {
                     }
                 }
 
-
-
-                stage("Sonarqube Analysis "){
-                    steps{
+                stage('Sonarqube Analysis ') {
+                    steps {
                         withSonarQubeEnv('sonar-server') {
                             sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
                             -Dsonar.projectKey=Streamlit '''
                         }
                     }
                 }
-                stage("quality gate"){
+                stage('quality gate') {
                     steps {
                         script {
-                            waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
+                            waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
                         }
-                    } 
+                    }
                 }
-                
+
                 stage('Streamlit Application Testing') {
                     steps {
                         sh '''
@@ -129,23 +124,22 @@ pipeline {
                             echo "Streamlit application testing completed!"
                         '''
                     }
-                }                
+                }
 
                 stage('OWASP FS SCAN') {
                     steps {
-                        sh 'echo "Thirdparty Dependencies Check, skipping for now!! " ' 
-                      //   dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
-                        // dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                        sh 'echo "Thirdparty Dependencies Check, skipping for now!! " '
+                    //   dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                    // dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
                     }
                 }
-                
-                
+
                 stage('TRIVY FS SCAN') {
                     steps {
-                        sh "trivy fs . "
-                        sh "trivy fs . > trivyfs.txt"
+                        sh 'trivy fs . '
+                        sh 'trivy fs . > trivyfs.txt'
                     }
-                } 
+                }
 
                 stage('Docker Build Streamlit Image') {
                     steps {
@@ -162,11 +156,11 @@ pipeline {
                     }
                 }
 
-                 stage("TRIVY"){
-                    steps{
-                        sh "trivy image $FULL_IMAGE > trivyimage.txt" 
+                stage('TRIVY') {
+                    steps {
+                        sh "trivy image $FULL_IMAGE > trivyimage.txt"
                     }
-                } 
+                }
 
                 stage('Docker Push to Docker Hub') {
                     steps {
@@ -192,7 +186,6 @@ pipeline {
                         }
                     }
                 }
-
 
                 stage('Deploy to Docker Desktop Staging - via Ansible') {
                     steps {
@@ -261,10 +254,9 @@ pipeline {
                         Argo CD will reconcile the Streamlit application in canary rollout strategy once approved!
                         """
                     }
-                }       
-
+                }
             }
-        }    
+        }
     }
 
     post {
@@ -281,8 +273,7 @@ pipeline {
                     to: 'shaikh4huda@gmail.com',
                     attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
                     )
-                }
-    }        
-       
-        
+        }
+    }
+
 }
