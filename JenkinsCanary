@@ -14,7 +14,6 @@ pipeline {
     }
 
     stages {
-
         stage('Clean Workspaces!!!') {
             steps { cleanWs() }
         }
@@ -98,7 +97,7 @@ pipeline {
 
                 stage('Sonarqube Analysis ') {
                     steps {
-                        withSonarQubeEnv('sonar-server') {
+                        withSonarQubeEnv('SonarQubeScannerServer') {
                             sh ''' /opt/sonar-scanner/bin/sonar-scanner -Dsonar.projectName=Streamlit \
                             -Dsonar.projectKey=Streamlit '''
                         }
@@ -275,5 +274,4 @@ pipeline {
                     )
         }
     }
-
 }
