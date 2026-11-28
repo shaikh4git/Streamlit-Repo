@@ -1,7 +1,7 @@
 
 pipeline {
     agent {
-        label 'DevopsAgentLabelV7'
+        label 'DevopsAgentLabelV8'
     }
 
     options {
