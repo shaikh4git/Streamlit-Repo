@@ -58,8 +58,7 @@ pipeline {
 
                     // Separate SonarQube project for each PR.
                     // Community Edition does not provide native PR analysis.
-                    env.SONAR_PROJECT_KEY =
-                        "Streamlit-PR-${env.CHANGE_ID}"
+                    env.SONAR_PROJECT_KEY = 'Streamlit-PR'
                 }
             }
         }
@@ -152,7 +151,7 @@ pipeline {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate(
                         abortPipeline: true,
-                        credentialsId: 'Sonar-token'
+                    // credentialsId: 'Sonar-token'
                     )
                 }
             }
