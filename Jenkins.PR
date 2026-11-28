@@ -1,0 +1,252 @@
+
+pipeline {
+    agent {
+        label 'DevopsAgentLabelV7'
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+
+        buildDiscarder(
+            logRotator(numToKeepStr: '20')
+        )
+    }
+
+    environment {
+        IMAGE_REPO = 'shaikhdocker/sshuda-streamlit-app'
+        SONAR_SERVER = 'SonarQubeScannerServer'
+    }
+
+    stages {
+        stage('Validate Pull Request') {
+            steps {
+                script {
+                    if (!env.CHANGE_ID) {
+                        error('This pipeline is intended only for PR builds')
+                    }
+
+                    if (env.CHANGE_TARGET != 'main') {
+                        error('Only Pull Requests targeting main are supported')
+                    }
+
+                    echo """
+                    ==================================
+                    PR VALIDATION STARTED
+                    ==================================
+                    PR Number : ${env.CHANGE_ID}
+                    Source    : ${env.CHANGE_BRANCH}
+                    Target    : ${env.CHANGE_TARGET}
+                    Revision  : ${env.GIT_COMMIT}
+                    ==================================
+                    """
+                }
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+
+                script {
+                    env.PR_IMAGE_TAG =
+                        "pr-${env.CHANGE_ID}-${env.BUILD_NUMBER}"
+
+                    env.FULL_IMAGE =
+                        "${env.IMAGE_REPO}:${env.PR_IMAGE_TAG}"
+
+                    // Separate SonarQube project for each PR.
+                    // Community Edition does not provide native PR analysis.
+                    env.SONAR_PROJECT_KEY =
+                        "Streamlit-PR-${env.CHANGE_ID}"
+                }
+            }
+        }
+
+        stage('Gitleaks - Secret Scanning') {
+            steps {
+                sh '''
+                    set -eu
+
+                    git fetch origin \
+                      "+refs/heads/${CHANGE_TARGET}:refs/remotes/origin/${CHANGE_TARGET}"
+
+                    gitleaks git . \
+                      --log-opts="origin/${CHANGE_TARGET}..HEAD" \
+                      --redact \
+                      --report-format json \
+                      --report-path gitleaks-report.json
+                '''
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'gitleaks-report.json',
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+        stage('Python Dependencies') {
+            steps {
+                sh '''
+                    set -eu
+
+                    python3 -m venv .venv
+
+                    .venv/bin/python -m pip install --upgrade pip
+
+                    .venv/bin/python -m pip install -r requirements.txt
+
+                    .venv/bin/python -m pip install pytest
+                '''
+            }
+        }
+
+        stage('Python Syntax Validation') {
+            steps {
+                sh '''
+                    .venv/bin/python -m py_compile app.py
+                '''
+            }
+        }
+
+        stage('Pytest Unit Testing') {
+            steps {
+                sh '''
+                    .venv/bin/python -m pytest tests/ \
+                      -v \
+                      --junitxml=pytest-results.xml
+                '''
+            }
+
+            post {
+                always {
+                    junit(
+                        testResults: 'pytest-results.xml',
+                        allowEmptyResults: true
+                    )
+                }
+            }
+        }
+
+        stage('SonarQube SAST Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQubeScannerServer') {
+                    sh '''
+                        sonar-scanner \
+                          -Dsonar.projectName="Streamlit PR ${CHANGE_ID}" \
+                          -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
+                          -Dsonar.sources=. \
+                          -Dsonar.exclusions=".venv/**,tests/**,**/__pycache__/**"
+                    '''
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate(
+                        abortPipeline: true,
+                        credentialsId: 'Sonar-token'
+                    )
+                }
+            }
+        }
+
+        stage('Trivy Filesystem Scan - Report Only') {
+            steps {
+                sh '''
+                    trivy fs \
+                      --exit-code 0 \
+                      --format table \
+                      --output trivyfs-report.txt \
+                      .
+                '''
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'trivyfs-report.txt',
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+        stage('Docker Build Validation') {
+            steps {
+                sh '''
+                    docker buildx build \
+                      --load \
+                      --tag "$FULL_IMAGE" \
+                      .
+
+                    echo "Docker image build successful"
+                '''
+            }
+        }
+
+        stage('Trivy Image Scan - Report Only') {
+            steps {
+                sh '''
+                    trivy image \
+                      --exit-code 0 \
+                      --format table \
+                      --output trivy-image-report.txt \
+                      "$FULL_IMAGE"
+                '''
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'trivy-image-report.txt',
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+        stage('PR Validation Successful') {
+            steps {
+                echo """
+                ==================================
+                PR VALIDATION PASSED
+                ==================================
+
+                PR       : ${env.CHANGE_ID}
+                Image    : ${env.FULL_IMAGE}
+                Sonar    : ${env.SONAR_PROJECT_KEY}
+
+                Docker Push : SKIPPED
+                Deployment  : SKIPPED
+                GitOps      : SKIPPED
+
+                ==================================
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'All mandatory PR validations passed!'
+        }
+
+        failure {
+            echo 'PR validation failed. Review the failed stage.'
+        }
+
+        always {
+            echo "Build result: ${currentBuild.currentResult}"
+
+            cleanWs()
+        }
+    }
+}
