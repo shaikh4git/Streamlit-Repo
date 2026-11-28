@@ -20,7 +20,7 @@ pipeline {
     }
 
     stages {
-        stage('Validate Pull Request') {
+        stage('Validate Pull Request for Streamlit') {
             steps {
                 script {
                     if (!env.CHANGE_ID) {
